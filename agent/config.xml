@@ -1,0 +1,135 @@
+<config>
+
+	<name>Local</name>
+
+	<temp>D:\Documents\OCaml\x264farm\temp\agent</temp>
+
+	<!-- Usable port range. Note that only one of these ports will be used at a time. -->
+	<port from="40700" to="40703"/>
+
+	<adhoc controller="40700" agent="40701"/>
+
+	<!-- The number of simultaneous encodes to report to the controller when not specified in the controller's config file -->
+	<number pad="0">2</number>
+	<!--
+		Use this to change the executable that is run. It will default to "x264"
+		if it is not specified here
+	-->
+	<x264>x264</x264>
+<!--	<x264>F:\x264_build\build\win32\bin\x264.exe</x264>-->
+
+	<!--
+		If you want to set your encoding to a lower priority, set <nice> to a larger number.
+		0 means normal priority, 20 means idle. If you are running Windows, you need to
+		have the "nice" program installed, either in the directory you run the agent from,
+		or somewhere on the path.
+		Unix-ish operating systems already have this program.
+	-->
+	<nice>10</nice>
+
+	<!--
+		<base> is for agent-based encoding.
+		If it is set to "<base></base>" or "<base/>" then the AVS file is searched for
+		in the exact directory that the controller found it.
+		If it is set to a directory, that directory is taken as the base encode directory.
+		For example, if the controller is encoding file "D:\movies\working\somewhere\file.avs"
+		and you have <base>F:\temp\x264farm</base> here, then the AVS file is searched for in this order:
+		
+		F:\temp\x264farm\D:\movies\working\somewhere\file.avs
+		F:\temp\x264farm\movies\working\somewhere\file.avs
+		F:\temp\x264farm\working\somewhere\file.avs
+		F:\temp\x264farm\somewhere\file.avs
+		F:\temp\x264farm\file.avs
+		
+		If none of those files are found, the default controller-based encoding is used.
+		
+		If <base> is not specified or if it is commented out, controller-based encoding is always used.
+		
+		You may specify multiple base directories with the <bases> line. For example:
+			<bases>
+				<base>base1</base>
+				<base>base2</base>
+				<base/>
+			</bases>
+		Each of these bases is treated exactly as described above.
+		The first directory listed which has an identical file is used as the encoding base
+		
+		
+		NOTE: Thanks to a few quirks in the way OCaml handles Windows directories,
+		if you use only a drive letter you MUST have a trailing backslash;
+		if you use some subdirectory you MUST NOT have a trailing backslash.
+		For example:
+			<base>c:</base>  *WRONG*
+			<base>c:\</base> *RIGHT*
+			<base>c:\documents and settings</base>  *RIGHT*
+			<base>c:\documents and settings\</base> *WRONG*
+		You can see if a directory was accepted by the "agent bases:" line displayed
+		when the agent is first run.
+		
+		See x264farm.html for more information
+	-->
+	<!--
+	<bases>
+		<base>e:\bittorrents</base>
+		<base>c:\encode</base>
+		<base>d:\documents</base>
+		<base>e:\dvd\mkv</base>
+		<base>e:\dvd\mkv\</base>
+		<base/>
+	</bases>
+	-->
+
+	<base></base>
+
+
+	<!--
+		Set <agentpipe> to 1 in order to pipe data through to x264 in agent mode.
+
+		If this is off the following basic command is executed:
+		x264 <options> -seek a -frames b input.avs
+		
+		If this is on the command is more like this:
+		avs2yuv -raw -seek a -frames b -o - input.avs | x264 <options> - 720x480
+		
+		Really the only reason to use this is if you have a 64-bit version of x264,
+		but you have a 32-bit version of avisynth. In this case, x264 is incapable of
+		simply linking to avisynth, and therefore needs the data fed to it by avs2yuv.
+		Obviously, this requires that the agent have access to avs2yuv.
+	-->
+	<agentpipe>1</agentpipe>
+
+	<!--
+		The <compression> section is where you can select which types of compression to
+		accept from the controller for controller-based encoding. These settings do nothing
+		when using agent-based encoding.
+		These are the currently supported compression types:
+			0: Uncompressed. This is the fallback compression type.
+			1: Paeth / Huffman. This tends to get 3:1 - 4:1 compression.
+		The first one in this list which the controller supports is used by the controller.
+		Every type under type 0, therefore, is disabled, since "no compression" is always supported
+	-->
+	<compression>
+		<type>1</type>
+		<type>0</type>
+	</compression>
+
+	<!--
+		<passcompression> sets different compression settings for the first and second passes.
+		Both the <first> and <second> sections have the same format as the above <compression>
+		element, but they only affect one of the two passes.
+		This is useful if the network is the bottleneck during the first pass,
+		but the encoder is the bottleneck during the second.
+	-->
+
+<!--
+	<passcompression>
+		<first>
+			<type>1</type>
+		</first>
+		<second>
+			<type>0</type>
+		</second>
+	</passcompression>
+-->
+
+</config>

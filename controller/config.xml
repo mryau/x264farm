@@ -1,0 +1,41 @@
+<config>
+	<temp>D:\Documents\OCaml\x264farm\temp\controller</temp> <!-- Some directory for storing temp data -->
+
+	<adhoc controller="40700" agent="40701"/>
+
+		<!--
+	<agents>
+		<agent name="Linux">
+			<ip>192.168.1.104</ip>
+			<port>40700</port>
+			<number pad="1">1</number>
+		</agent>
+		<agent name="Local">
+			<ip>127.0.0.1</ip>
+			<port>40700</port>
+			<number>2</number>
+		</agent>
+		<agent name="Apple">
+			<ip>192.168.1.103</ip>
+			<port>40700</port>
+			<number pad="1">2</number>
+		</agent>
+		<agent name="Lappy">
+			<ip>192.168.1.105</ip>
+			<port>40700</port>
+			<number pad="1">2</number>
+		</agent>
+
+		<agent name="Faked">
+			<ip>192.168.1.99</ip>
+			<port>40700</port>
+			<number pad="0">1</number>
+		</agent>
+		<agent name="Quasi">
+			<ip>192.168.1.98</ip>
+			<port>40700</port>
+			<number pad="0">1</number>
+		</agent>
+	</agents>
+		-->
+</config>

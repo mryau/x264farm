@@ -1,0 +1,425 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<!--
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="http://www.w3.org/Math/XSL/mathml.xsl"?>
+-->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>x264farm</title>
+<style type="text/css">
+<!--
+p {
+	text-align: justify;
+}
+h1 {
+	font-variant: small-caps;
+}
+img {
+	border: 1px solid #000000;
+}
+body {
+	text-align: justify;
+}
+code {
+	background-color: #EEEEEE;
+}
+.block {
+	display: block;
+	width: 31em;
+}
+ol {
+	list-style-type: decimal;
+}
+ol ol {
+	list-style-type: lower-latin;
+}
+-->
+</style>
+</head>
+
+<body>
+<h1 style="text-align: center">x264farm</h1>
+<h2 style="text-align: center">A distributed video encoder </h2>
+<h5 style="text-align: center">Copyright &#xA9; 2006 Reed Wilson (&quot;Omion&quot;)<br />
+  &#x63;<!-- This is all crazy stuff to prevent my email from being read by bots -->&#101;&#8203;&#x64;&#105;&#8203;&#108;&#x6C;<span style="display:none"> LOREM IPSUM DOLOR SIT AMET </span>&#97;&#32;&#x41;<span style="display: none">CCEN</span>&#x54;&#32;<!-- If you can think of any other obfuscation to add, using only HTML and CSS, e-mail me! -->&#x67;&#109;<span style="display:none"> CONSECTETUR ADIPISICING ELIT </span>&#x61;<i></i>&#x69;&#108;&#x20;&#68;&#x4F;<b style="display:none">N</b>&#x54;&#8203;&#32;&#99;<span style="display:none"><b>Hmm.. it looks like you don't have CSS. My email will be very hard to decipher</b></span><i style="display:none">SED DO EIUSMOD TEMPOR INCIDIDUNT UT LABORE ET DOLORE MAGNA ALIQUA</i>&#111;<!-- Approaching the end, cap'n! -->&#109;</h5>
+<h2>Abstract</h2>
+<p>x264farm is a program which utilizes  <a href="http://developers.videolan.org/x264.html">x264</a>  in a distributed environment to improve encoding speed. It is designed mainly to be portable and relatively easy to use.</p>
+<h2>License</h2>
+<p>This program is free software; you can redistribute it and/or modify      it under the terms of the <abbr title="GNU's Not Unix" lang="en" xml:lang="en">GNU</abbr> General Public License as published by      the Free Software Foundation; either version 2 of the License, or      (at your option) any later version. Please see <a href="gpl.txt">gpl.txt</a> for more details. Source code for this program should be available from the same place as the compiled version.</p>
+<h2>Installing</h2>
+<p>x264farm uses two distinct parts: the <i>agent</i>, which runs x264 on each encoding computer, and the <i>controller</i>, which gives commands and data to each of the agents.</p>
+<h3>Installing the agents </h3>
+<p>Each computer that you want to run an agent on must have a copy of x264. Similarly, in order to use the <code>nice</code> function, you must have the &quot;nice&quot; program installed to a location on the path. I have made a Windows version of <code>nice</code> which can be downloaded on <a href="http://omion.dyndns.org/x264farm/nice-win32.rar">my site</a>; most Unix-ish operating systems already have it.</p>
+<ol>
+  <li>Copy the contents of the <code>agent</code> directory somewhere. You must, of course, use the version that has been compiled for your architecture.</li>
+  <li>Create a temporary directory for storing the results of each x264 run.</li>
+  <li>Edit the contents of <code>config.xml</code>  to reflect your computer's configuration:  
+    <ol><!-- -->
+      <li><code>&lt;temp&gt;</code> should be set to the directory you made in step 2.</li>
+      <li><code>&lt;port&gt;</code> can be just about anything greater than 1056 and less than 65535. <code>&lt;port&gt;</code> specifies a range of ports to use, in case one of them is tied up with something else. Specifying too many ports will make it difficult for the controller to connect if the agent gets reset. Specifying too few ports will, oddly enough, create the same problem.</li>
+      <li><code>&lt;x264&gt;</code> should be set to the name of the x264 executable. It will default to &quot;x264&quot; if this line is not present.</li>
+      <li><code>&lt;nice&gt;</code> is used to change the priority of the x264 process. 0 is normal priority, 20 is idle. On Windows, 0-3 is &quot;normal&quot;, 4-11 is &quot;below normal&quot;, 12-20 is &quot;low&quot;.</li>
+      <li><code>&lt;number&gt;</code> currently does nothing in the agent's config, but in the future it may set a maximum number of jobs being worked on. Currently, the agent simply accepts all of the jobs that the controller sends it. The agent will even work on jobs from multiple different controllers at the same time.</li>
+      <li>You may also add a <code>&lt;base&gt;</code> parameter to attempt agent-based encoding (see <a href="#encoding_methods">encoding methods</a>)</li>
+      <li><code>&lt;agentpipe&gt;</code> can be set to 1 to indicate that the agent should pipe data from avs2yuv even in agent-based encoding. If you have a 64-bit version of x264 and a 32-bit version of avisynth, you need to set <code>&lt;agentpipe&gt;</code> to 1 in order to get agent-based encoding to work. Otherwise, there's really no reason to use it. </li>
+      <li><code>&lt;compression&gt;</code> should only be changed if you have a fast controller computer connected to a slow network. The order in which the compression types appear is the arder which they are tried. Therefore, if <code>&lt;type&gt;0&lt;/type&gt;</code> is at the top of the list, compression is turned off. The currently supported compression types are:
+        <ul>
+          <li>0: No compression</li>
+          <li>1: Paeth / Huffman. Tends to get 3:1 - 4:1 compression on most movies</li>
+        </ul>
+        <code>&lt;passcompression&gt;</code> may be used instead of <code>&lt;compression&gt;</code> for specifying different compression settings for the first and second passes. Within the <code>&lt;passcompression&gt;</code> segment, set the <code>&lt;first&gt;</code> and <code>&lt;second&gt;</code> settings the same way as the above <code>&lt;compression&gt;</code> segment. For example, to use compression on only the first pass, you may use the following:<br />
+        <code class="block">&lt;passcompression&gt;<br />
+        &nbsp;&lt;first&gt;<br />
+        &nbsp;&nbsp;&lt;type&gt;1&lt;/type&gt;<br />
+        &nbsp;&lt;/first&gt;<br />
+        &nbsp;&lt;second&gt;<br />
+        &nbsp;&nbsp;&lt;type&gt;0&lt;/type&gt;<br />
+        &nbsp;&lt;/second&gt;<br />
+        &lt;/passcompression&gt;</code>
+		or simply leave out the <code>&lt;second&gt;</code> block.</li>
+      <li><a name="adhoc-agent" />If using ad-hoc agent discovery, add an <code>&lt;adhoc&gt;</code> element specifying the ports to use, like so: <code>&lt;adhoc controller=&quot;12345&quot; agent=&quot;23456&quot;/&gt;</code>.</li>
+      <li>Also with ad-hoc, the <code>&lt;name&gt;</code> element will broadcast the name for the agent to be associated with.</li>
+    </ol>
+  </li>
+  <li>As of 1.09, the agent will clean up the temporary directory of any files older than a certain amount. By default, it will delete files which were created over a week ago, but you may use the <code>--stale</code> command-line option to specify the number of seconds before temp files are considered abandoned. Use <code>--stale 0</code> to turn off old file deletion.</li>
+</ol>
+<h3>Installing the controller</h3>
+<p>The controller should be installed on the most powerful Windows-based machine on the network. The controller needs to have access to the avs2yuv program and all the source files and filters that any encode needs. </p>
+<ol>
+  <li>Copy the contents of the <code>controller</code> directory to somewhere that makes sense (like <code>c:\program files\x264farm\controller</code>)</li>
+  <li>Create a temporary directory for storing the work returned from the agents </li>
+  <li>Edit the contents of <code>controller\config.xml</code> to reflect your network configuration (note that the config file has changed since 1.02):
+    <ol>
+      <li><code>&lt;temp&gt;</code> should point to the temporary directory you made in step 2.</li>
+      <li>Make one <code>&lt;agent&gt;</code> for each computer you want running an agent. Multi-core computers only need one agent running.</li>
+      <li><code>&lt;name&gt;</code> may be anything, and will only influence the output messages.</li>
+      <li><code>&lt;ip&gt;</code> is the IP address  of each agent. You may use 127.0.0.1 to refer to the computer running the controller.</li>
+      <li><code>&lt;port&gt;</code> should be set to whatever you set <code>&lt;port&gt;</code> to in the agent's <code>config.xml</code> file.</li>
+      <li><code>&lt;number&gt;</code> is the number of jobs to send out to the agent. This basically specifies how many encodes to do at one time. It should be set to the number of processor cores in the agent's computer.</li>
+      <li>Use <code>&lt;number pad=&quot;1&quot;&gt;</code>  to send one additional job to the agent during the second pass. Since the second pass jobs are so short (generally a few seconds) it is a good idea to have something else working in the background when a job gets done. This setting has no bearing on the first pass.</li>
+      <li>If you want to use ad-hoc agent discovery, add an <code>&lt;adhoc&gt;</code> element specifying the ports to use, like so: <code>&lt;adhoc controller=&quot;12345&quot; agent=&quot;23456&quot;/&gt;</code>. Note that this line should be the same in both controller and agent config.xml files in order to work properly.</li>
+    </ol>
+  </li>
+</ol>
+<h2>Running</h2>
+<ol>
+  <li>Start up each of the agents with the command <code>agent</code>. If your config file is not called <code>config.xml</code>, use <code>agent --config other_config_file.xml</code>.</li>
+  <li>
+    The agent should respond with something that looks like this:
+  <code class="block">
+x264farm version 1.03-152<br />
+Using config file &quot;.\config.xml&quot;<br />
+&nbsp;Temp dir: &quot;E:\x264farm\temp\agent&quot;<br />
+&nbsp;Ports: 50700 - 50703<br />
+&nbsp;x264: &quot;x264.bat&quot;<br />
+&nbsp;nice: 20<br />
+&nbsp;agents: 2<br />
+&nbsp;agent base: &quot;&quot; <br />
+trying port 50700<br />
+bound to port 50700<br />
+listening...<br />
+working!
+   </code>
+  </li>
+<li>Start the controller. See the <a href="#controller_options">controller options</a> section for details.</li>
+</ol>
+
+<h2><a name="controller_options">Controller options</a></h2>
+<p>The minimum options that should be given is <code>--first</code>, <code>--second</code>, <code>--bitrate</code>, <code>--avs</code>, and <code>--output</code>. (or their equivalent short forms <code>-1</code>, <code>-2</code>, <code>-B</code>, <code>-i</code>, and <code>-o</code>) </p>
+<h3>General x264 parameters</h3>
+<dl>
+  <dt><code>-B</code> / <code>--bitrate &quot;100%&quot;</code></dt>
+  <dd>The second pass bitrate. May either be specified in kbps (<code>-B 789kbps</code>) or as a percentage of the first pass bitrate (<code>-B 100%</code>)</dd>
+  <dt><code>-1</code> / <code>--first &quot;&quot; </code></dt>
+  <dd>The options to use during the first pass, enclosed in quotes. DO NOT specify an input file, output file, bitrate, or any option listed in the <a href="#assorted_parameters">assorted parameters section</a>. An example of this switch is <code>--first &quot;--crf 19 --sar 10:11 --no-psnr --direct auto --mixed-refs --subme 5 --ref  8 --me umh --bframes 7 --weightb --b-pyramid --analyse all&quot;</code></dd>
+  <dt><code>-2</code> / <code>--second &quot;&quot; </code></dt>
+  <dd>The options to use during the second pass. Like the <code>--first</code> option, don't specify an input file, output file, bitrate, or any option listed in the <a href="#assorted_parameters">assorted parameters section</a>. An example of this switch is <code>--second &quot;--trellis 2 --bime --sar 10:11 --no-psnr --direct auto --mixed-refs --subme 7 --ref 12 --me umh --bframes 7 --weightb --b-pyramid --analyse all --8x8dct&quot;</code></dd>
+  <dt><code>-i</code> / <code>--avs</code></dt>
+  <dd>The input AVS to use for encoding.</dd>
+  <dt><code>--firstavs</code></dt>
+  <dd>An alternate AVS for encoding the first pass. Many options such as postprocessing do not need to be in the first pass, so you can pass a simplified script with this option. It must have the same dimensions and framerate as the <code>--avs</code> file. It will default to whatever <code>--avs</code> is.</dd>
+  <dt><code>--fastavs</code></dt>
+  <dd>This file is used for split detection during the first pass. It will not affect quality at all. It must be the same framerate as the <code>--avs</code> and <code>--firstavs</code> files, but it may have different dimensions. As long as the output of this file changes significantly when a scene change occurs, it may be as simple as you can make it.</dd>
+  <dt><code>-o</code> / <code>--output &quot;output.mkv&quot; </code></dt>
+  <dd>The output file. Only Matroska (MKV)  files are created. Specifying a different file extension will result in an MKV file with the wrong extension.</dd>
+</dl>
+<h3>x264farm control parameters</h3>
+<dl>
+  <dt><code>--preseek 0 </code></dt>
+  <dd>How many frames to pre-render before each job. The only time I've encountered needing this option was using telecide mode=2, when <code>--preseek</code> needs to be set to 5.</dd>
+  <dt><code>--force</code></dt>
+  <dd>This will re-encode the file even if the controller has determined that it has been encoded before. Generally this will cause it to restart at the beginning of the second pass.</dd>
+  <dt><code>--restart</code></dt>
+  <dd>Delete all intermediate files and start over from scratch.</dd>
+  <dt><code>--config &quot;config.xml&quot; </code></dt>
+  <dd>This is the location of the configuration file. It will default to config.xml, and will be searched for in the current directory, then the directory the controller executable is in.</dd>
+  <dt><code>--savedisk</code></dt>
+  <dd>When x264farm gets done encoding, all the scenes are located in separate files in the controller's temp directory. The last pass is to merge them into a single file. By default, the temp files are only deleted after all of them are merged, which will use about twice the disk space of the completed file. Using <code>--savedisk</code> will delete each file right after it is merged, which does not use too much extra disk space. However, if the controller is restarted during merging, the deleted files will have to be re-encoded.</dd>
+  <dt><code>--nocomp</code></dt>
+  <dd>Turns off compression for controller-based encodes, even if agents request it. Use this if you experience errors or corruption with compression.</dd>
+</dl>
+<h3>First pass split parameters</h3>
+<dl>
+  <dt><code>--batch 5000 </code></dt>
+  <dd>The minimum number of frames to send out in one job at the beginning, assuming there are this many contiguous unencoded frames. If this number is smaller than the <code>-I</code> / <code>--keyint</code> option passed to x264 (250 by default), then it may take a long time to do anything..</dd>
+  <dt><code>--batchmult 0.5</code></dt>
+  <dd>How much smaller the jobs at the end will be. 0.5 means that, after most frames have been encoded, the jobs will be around 1/2 what the <code>--batch</code> parameter is set to. This is to prevent a slow computer from getting a big job at the end of the encode, although it currently doesn't work too well.</dd>
+  <dt><code>--split 250 </code></dt>
+  <dd>The maximum number of frames to look for a split point after <code>--batch</code> frames have been found. This value should be larger than x264's <code>-I</code> / <code>--keyint</code> option. </dd>
+  <dt><code>--thresh 20.0 </code></dt>
+  <dd>This is sort of the <em>carefulness</em> of the splitter. A higher number will result in more frames tested before a split point determination is made. No more than <code>--split</code> frames will ever be tested, though. See the <a href="#split_points">split point section</a> for more details.</dd>
+  <dt><code>--rethresh 10.5</code> </dt>
+  <dd>This uses the same units as the <code>--thresh</code> option. Increasing this number will cause more jobs to be temporarily overlooked if they have a weak starting point. Using <code>--rethresh 1.0</code> will revert to the way 1.12 and before handled jobs. If not specified, it will default to (<code>--thresh</code> + 1) / 2.</dd>
+</dl>
+<h3>Selective third-pass parameters</h3>
+<dl>
+  <dt><code>--3thresh 0.8 </code></dt>
+  <dd>The maximum accuracy to consider a scene eligable for a re-encode, from 0.0 (re-encode nothing) to 1.0 (everything is eligable).</dd>
+  <dt><code>--3gops 1073741823</code></dt>
+  <dd>The maximum number of scenes to  re-encode.</dd>
+  <dt><code>--3ratio 0.05</code></dt>
+  <dd>The maximum ratio of re-encoded scenes to total scenes. The default value will re-encode a maximum of 5% of the scenes.</dd>
+  <dt><code>--rerc 0</code></dt>
+  <dd>The number of scenes to re-encode before the ratecontrol is run again. 0 means the total number of scenes in the file.</dd>
+</dl>
+
+<h3><a name="assorted_parameters" >Assorted x264 parameters</a></h3>
+<p>These are the same as the x264 parameters of the same names. They should <em>never</em> be used inside the <code>--first</code> or <code>--second</code> parameters. They apply to both the first and second passes (except the ratecontrol parameters which don't make sense during the first pass).</p>
+<ul>
+  <li><code>--zones &quot;&quot;</code></li>
+  <li><code>--seek 0</code></li>
+  <li><code>--frames 0</code></li>
+  <li><code>--qcomp 0.6</code></li>
+  <li><code>--cplxblur 20.0</code></li>
+  <li><code>--qblur 0.5</code></li>
+  <li><code>--qpmin 10</code></li>
+  <li><code>--qpmax 51</code></li>
+  <li><code>--qpstep 4</code></li>
+  <li><code>--ipratio 1.4</code></li>
+  <li><code>--pbratio 1.3</code></li>
+</ul>
+<h3>Other parameters</h3>
+<dl>
+  <dt><code>-h</code> / <code>--help</code></dt>
+  <dd>Show a help message and exit</dd>
+  <dt>(anything else)</dt>
+  <dd>Every non-option is taken to be a file which contains more options. This is useful if you have a set of common encoding settings which you don't want to type in every time. The file must have one option per line, with blank lines and lines starting with &quot;#&quot; ignored. Here is an example:<br />
+    <code class="block"># The -B and the 100% MUST be on separate lines<br />
+    -B<br />
+100%<br />
+<br />
+# First pass settings<br />
+#  &quot;--crf 19&quot; is the argument to --first<br />
+# Therefore &quot;--crf 19&quot; must be on ONE line<br />
+--first<br />
+--crf 19<br />
+<br />
+# Here is the second pass line: <br />
+--second<br />
+--trellis 2<br />
+<br />
+--batch<br />
+#230 - This line is ignored<br />
+3400</code></dd>
+</dl>
+<h2>How it works</h2>
+<p>The agent program is quite simple: encode the data recieved from the controller, and  send out the encoded data. The controller is quite a bit more complicated, and can be divided into 2 parts: the first pass, and everything after that.</p>
+<h3>Controller: the first pass</h3>
+<p>The first pass is also made up of two parts, each of which run simultaneously: the splitter and the workers</p>
+<h4>First pass: splitter </h4>
+<p>It is the splitter's job to take any unencoded parts of the video and turn them into ranges for the workers to take. The length of the ranges is determined by the <code>--batch</code>, <code>--split</code>, and <code>--thresh</code> options. Once a range has been split, it is put in a queue for the workers to pick up.</p>
+<h4>First pass: workers</h4>
+<p>The workers pick out ranges from the splitter and stream the raw video data of the range out to the agents. They then recieve the stats file produced by the agent and process it. If the split point chosen by the splitter was found to be bad, the worker will signal the splitter to re-split the end of the range.</p>
+<p>When all the workers are done and the splitter can't find any frames to encode, the resultant stats file is written and the first pass ends.</p>
+<h3>Controller: everything after the first pass </h3>
+<p>When the first pass ends, the controller reads the stats file and breaks it up into GOPs. Each GOP starts with an &quot;I&quot; frame and goes to (but does not include) the next &quot;I&quot; frame. This represents the smallest group of frames which can be calculated independantly. After the stats file is split into GOPs, they are sent to the ratecontrol equation to figure out the optimal bitrate of each GOP. Each GOP is sent to an agent to be encoded into a video fragment. When the video fragment comes back, it is analyzed to see how many bits it actually used. The ratecontrol used is designed to be as close to the ratecontrol done by x264 itself. Therefore, defining your own ratecontol in the second pass will not have much effect at all, and will only result in more re-encoded frames. </p>
+<p>Once all the GOPs have been processed, the ratecontrol is done again on the (hopefully) more accurate stats of the second pass. Here, the issue of <em>accuracy</em> should be mentioned: the closer the optimal number of  bits (specified by the ratecontrol) and the actual number of bits, the more accurate the GOP is, and the less it needs re-encoding. The actual equation is: max(optimalBits,actualBits) / min(optimalBits,actualBits).
+<!--<math xmlns='http://www.w3.org/1998/Math/MathML'>
+ <mfrac>
+  <mrow>
+   <mi>max</mi>
+   <mo>&#8289;</mo>
+   <mo>(</mo>
+   <mrow>
+    <mi>optimal_bits</mi>
+    <mo>,</mo>
+    <mi>actual_bits</mi>
+   </mrow>
+   <mo>)</mo>
+  </mrow>
+  <mrow>
+   <mi>min</mi>
+   <mo>&#8289;</mo>
+   <mo>(</mo>
+   <mrow>
+    <mi>optimal_bits</mi>
+    <mo>,</mo>
+    <mi>actual_bits</mi>
+   </mrow>
+   <mo>)</mo>
+  </mrow>
+ </mfrac>
+</math> 
+-->
+</p>
+<p>After the second pass is finished, each GOP is processed from the least accurate to the most accurate. When a GOP is finished for the third pass, it is put back in the same list, and therefore may be processed multiple times before the total encoding is finished. The number of GOPs processed is determined by the --3thresh, --3gops, and --3ratio options. --3gops determines the total number of GOPs to recode after they have been allprocessed. --3ratio is the same thing, but in terms of the percentage of total GOPs (i.e. 0.1 will process at most 10% of the total GOPs again). --3thresh indicates a maximum accuracy to encode before deciding that the film is &quot;good enough.&quot; Basically, if the accuracy of all GOPs is greater than --3thresh, then encoding ends. If any of those three conditions are met, then the encoding is over and the final video file is spliced together.</p>
+<h2>Ad-hoc agent discovery</h2>
+<p>As of version 1.15, the agents and the controller will attempt to find each other over the local network. When an agent starts up, it will send a broadcast to all the computers on the local network. Controllers will also broadcast messages every minute to search for new agents on the local network. These features allow agents to be dynamically added to the encoding process. <strong>In 1.15, this feature is disabled by default. Enable it by adding <a href="#adhoc-agent">the appropriate line</a> to the controller's and agents' config.xml file.</strong> The agent will listen on the &quot;agent&quot; port and send on the &quot;controller&quot; port. Conversely, the controller will listen on the &quot;controller&quot; port and send on the &quot;agent&quot; port. The &quot;agent&quot; port must not be the same as the &quot;controller&quot; port, but both ports must be consistant in each config.xml file (that is, the line itself should just be copied and pasted in each file).</p>
+<h2><a name="encoding_methods">Encoding methods</a></h2>
+ <p>There are currently two encoding methods available to the agents: controller-based encoding and agent-based encoding.</p>
+ <h3>Controller-based encoding</h3>
+ <p>Controller-based encoding is the default encoding method. The controller starts up avs2yuv and sends the agent all of the rendered data across the network. This is the most portable method of encoding, as the input files need only be available to the computer with the controller. However, it is also the least scalable method of encoding, since the controller's computer is rendering all of the data.</p>
+ <h3>Agent-based encoding</h3>
+ <p>Agent-based encoding is used if the agent uses the <code>&lt;base&gt;</code> option in its config.xml file, and the agent determines that the AVS file is available to the agent. In this case, the agent will start up x264 directly, and does not need to be sent the data across the network. This method is extremely scalable, but it is more difficult to set up. Each agent using this method needs access to AVIsynth, all the filters, and the AVS file itself.</p>
+<h4>Setting up agent-based encoding</h4>
+ <p>The <code>&lt;base&gt;</code> option in the agent's config.xml file determines where to search for the AVS file. If no <code>&lt;base&gt;</code> option is specified, or if it points to a nonexistant directory, controller-based encoding is used instead. If you use <code>&lt;base/&gt;</code> or <code>&lt;base&gt;&lt;/base&gt;</code>, it is interpreted to mean only search exactly where the controller reports it. This is useful on the controller's computer, especially if you plan on encoding from multiple hard drives. If the directory specified by <code>&lt;base&gt;</code> is valid, the AVS file is searched from the deepest controller directory fragment within the <code>&lt;base&gt;</code> directory. For example:</p>
+ <p>Controller's AVS file: <code>D:\movies\working\somewhere\file.avs</code><br />
+   Agent's <code>&lt;base&gt;</code> directory: <code>F:\temp\x264farm</code></p>
+ <p>The agent's AVS file is searched for in the following locations, in this order:<br />
+   <code>F:\temp\x264farm\D:\movies\working\somewhere\file.avs</code> (can't exist, but is checked anyway)<br />
+   <code>F:\temp\x264farm\movies\working\somewhere\file.avs</code><br />
+   <code>F:\temp\x264farm\working\somewhere\file.avs</code><br />
+   <code>F:\temp\x264farm\somewhere\file.avs</code><br />
+   <code>F:\temp\x264farm\file.avs</code></p>
+ <p>The first of those AVS files that matches the controller's AVS file is used as the input to x264. If it is not found in any of those places, controller-based encoding is used instead.</p>
+ 
+ <h2><a name="split_points">How split points are chosen</a></h2>
+<p>During the second pass, the video is split into GOPs and sent out to be encoded. But the first pass does not know where the GOPs are, so it guesses based on a few parameters.</p>
+<p>The splitter will break down un-processed parts of the movie into pieces which are larger than <code>--batch</code>, but smaller than <code>--batch</code> + <code>--split</code>. The splitter will compare every pair of frames starting at <code>--batch</code>, in order to determine the frame which is most likely to be an &quot;I&quot; frame. This is the basic loop that occurs:</p>
+<p>Find the difference between the next two frames<br /> 
+  Update the average difference<br />
+  Update the current threshold to be between <code>--thresh</code> at the first frame analyzed, to 1 at the last (<code>--split</code>) frame to be analyzed<br />
+If any frame difference is more than &quot;threshold&quot; times the current average difference, the largest frame is used as the split point<br />
+Otherwise, the next pair of frames are analyzed</p>
+<p>The threshold changes in order to take advantage of the properties of the video. The alternative would be to read a set number of frames and pick the two consecutive frames which are the most different from each other as the split point. However, there are two problems with the static approach:
+</p>
+<ol>
+  <li>If there is an obvious candidate early on, then the rendering of all the other frames has gone to waste</li>
+  <li>If all the frames are more or less the same, it may be wise to analyze more frames to see if there is a better frame later on</li>
+</ol>
+
+<p>To summarize, the options which affect the split points are as follows:</p>
+<dl>
+  <dt>--batch</dt>
+  <dd>This is the minimum number of frames to have in one batch. The loop given above starts this many frames from the beginning</dd>
+  <dt>--split</dt>
+  <dd>This is the maximum number of  times to run the loop. Generally, this is never reached thanks to...</dd>
+  <dt>--thresh</dt>
+  <dd>Increasing this will increase the initial cautiousness of the splitter. It will process more frames before making a decision. The initial threshold is set to this number and goes down to 1 </dd>
+</dl>
+<h2>Caveats:</h2>
+<ul>
+  <li>The biggest issue is with using the default controller-based encoding. All of the filters are rendered on the controller computer, so a filter-heavy AVS will not scale well at all. Also, since all the filters are rendered on one computer, the output is uncompressed video. This can be a major strain on the network. With 100base-T ethernet, the controller can put out about 20 frames of DVD-resolution video per second. With gigabit ethernet, the number is around 200 FPS. 802.11g tends to be around 4 FPS. Using this progam over 802.11b or across an internet connection is not recommended. If you do need to send frames over the internet, compression is greatly encouraged.</li>
+  <li>Cancelling an encode on the controller side will stop all the agents using controller-based encoding. However, the ones using agent-based encoding will continue until their jobs are done. Generally this is less than a minute for the second pass, but it may be quite a bit more during the first pass. If you need the encoding power right then, you will have to restart the agent. This is a limitation of the Win32 inter-process signalling that I have yet to find a reasonable workaround to.</li>
+  <li>Don't think that the <code>&lt;base&gt;</code> directory in agent-based encoding is any sort of secure sandbox. The agent can still encode things outside the directory if you tell the controller to use something like <code>c:\movies\working\..\..\movies\working\something.avs</code>. This will, at one point, search in <code>&lt;base&gt;\..\..\movies\working</code>, which may be a completely different directory from the <code>&lt;base&gt;</code> directory.</li>
+</ul>
+<h2>Bugs:</h2>
+<ul>
+  <li>Ocassionally the controller will claim everything is done on the first pass, but it won't start the second pass. In this case, stop and restart the controller (no data will be lost). I actually haven't run into this in a while, but it still may pop up.</li>
+</ul>
+<h2>Tips:</h2>
+<ul>
+  <li>Run the controller on the most powerful computer that has access to the input files.</li>
+  <li>Each agent uses its own AVS rendering on the controller's computer (when using controller-based rendering). This means that, due to AVS caching, you will eventually have a large number of processes using huge amounts of memory on the controller's computer. Therefore, it is probably a good idea to use <code>SetMemoryMax(64)</code> (or similar) at the beginning of the AVS file. All the frame accesses are in-order, so there is no noticable perforance hit. </li>
+  <li>If the computer running the controller is also running an agent, use the agent's <code>&lt;nice&gt;</code> option to give priority to the controller.</li>
+  <li>If the majority of the processing time is spent rendering the AVS script, using controller-based encoding will not go any faster than regular x264 encoding. If this is the case for you, either set up agent-based encoding or simplify your AVS scripts.</li>
+  <li>You will only be able to send about 20 uncompressed DVD frames per second across a 100-megabit connection. If the encoding options are relatively lightweight, this can become a bottleneck. If you have a very slow connection, using compression may result in a 4x speed improvement. Also, using agent-based encoding can lighten the network load significantly.</li>
+  <li>If you have an Intel Mac running an agent, and the network is set up to use jumbo frames, you might notice <em>very</em> slow encodings. This is due to an annoying combination of two congestion-control measures. I have found that the easiest way to alleviate this is to run the following line on the Mac: <code>sudo sysctl -w net.inet.tcp.delayed_ack=0</code>. Note that you will need to type this every time you reboot, or put it into a startup script.</li>
+  <li>Come to think of it, the previous problem may also applies to other operating systems too. My program doesn't work too well with delayed ACK algorithms, so if you notice that neither the network nor the computers are running at full speed, try turning off delayed ACK. Exactly how you do that is OS-dependent. Google is your friend!</li>
+  <li>The way the agents are currently (1.02+) set up, they will accept any and all jobs they are given. That means if you start up two controllers doing different encodes, and each one is set up to start two jobs, the agent will end up doing <em>four</em> at a time. There is no problem with getting the jobs confused, but it may eat up the system resources.</li>
+</ul>
+<h2>Changelog:</h2>
+<dl>
+  <dt>1.15 (20071025): </dt>
+  <dd>Added ad-hoc agent discovery (although disabled by default). Agents may be added while the encoding is running, even if they are not specified in the controller's config.xml file.<br />
+    Ability to specify log file location on command line for both agent and controller.<br />
+    Faster controller-based compression.<br />
+  Changed the bucket-based agent cache to a single circular buffer.<br />
+  Changed the default port from 50700 to 40700. This will only affect you if you re-use one of my example config files.</dd>
+  <dt>1.14 (20071003): </dt>
+  <dd>Fixed an inconsistency with running x264 with spaces in the path.<br />
+    Added the capability to change the avs2yuv executable in the config.xml file.<br />
+    Add timestamps to the error messages and when the display was last updated (counting from when the program was started).<br />
+    Show "~" for errors if there are aren't enough to display, and made the default number of errors displayed 4.<br />
+    Doesn't update the FPS on the second pass if the encoding failed.<br />
+    Properly handle dead agents on the second pass.
+  </dd>
+  <dt>1.13 (20070703): </dt>
+  <dd>Added the <code>--batchmult</code> option to help with one agent checking out a big job at the end and making everything else wait for it.<br />
+    Added previous split points to the 1st-pass temp file. This means that 
+  encodes will start up faster after having been stopped.<br />
+  Optimized the splitter to try to get the jobs out faster in the beginning.<br />
+  1st-pass agents will now try to avoid working on jobs which may have incorrect start points, in order to minimize the number of re-encoded frames. <br />
+  Put ETA display back for both passes. Note that the ETA given in the first pass measures the end of the first pass only, and is incredibly inaccurate.<br />
+  Second pass GOPs are no longer encoded chronologically.<br />
+  Completely redesigned first pass to be easier to work on.</dd>
+  <dt>1.12-173 (20070530): </dt>
+  <dd>Added a heartbeat thread to each agent when agent-based encoding starts. Agents will send a signal to the controller every 10 seconds. If the controller does not receive a signal within 30 seconds, that agent is given up for dead. This should greatly reduce on the amount of stalled encodes.<br />
+    Controller output is much more organized, and no longer prints huge amounts of scrolling garbage. The out-dump.txt files are just as garbage-filled as before, though. </dd>
+  <dt>1.11-168 (20070428): </dt>
+  <dd>Fixed an overflow in the Matroska timecode calculation.<br />
+    Second-pass equality check takes bitrate into account.<br />
+  Changed the GOP layout from B+trees to red-black trees (not that anybody would notice the difference).</dd>
+  <dt>1.10-164 (20070425): </dt>
+  <dd>Implemented per-pass compression, so that the first and second passes have different compression priorities.<br />
+  More precise file size (tunable with the <code>--sizeprec</code> option)<br />
+  Ratecontrol handles extreme bitrates better.<br />
+  The <code>--keeptemp</code> option actually works now...<br />
+  Minor sanity checks when writing the files.</dd>
+  <dt>1.09-163 (20070310): </dt>
+  <dd>Agent now deletes temp files which are older than a specified amount of time (by default 1 week).<br />
+  Agent now uses niceness when both nice and piped input are being used.<br />
+  2nd pass bitrate should be more accurate.</dd>
+  <dt>1.08-161 (20070207): </dt>
+  <dd>Redesigned first pass. It should pick jobs more intelligently. The occasional problem with credits taking a very long time to encode is minimized.<br />
+    More verbose garbage printed to the screen regarding the new first pass mode. It will disappear shortly.<br />
+    Second pass should recover from x264 complaining about the minimum bitrate. Some jobs may fail a few times, but they will encode eventually.<br />
+    The agent and config.xml format are unchanged.</dd>
+  <dt>1.07-158 (20070105): </dt>
+  <dd>Fixed an issue with the controller computer rejecting network connections after an hour or so<br />
+
+  Made some of the more pointless messages log-only   </dd>
+  <dt>1.06-156 (20061225):</dt>
+  <dd>2nd pass resuming works again (sorry, guys!)<br />
+  Plugged the hole in the first pass which could cause frames which are being worked on to be re-encoded<br />
+  Compression should be faster. There are no more checksums, and the compression loop is faster.<br />
+  Fixed up the re-encode part to ask for confirmation instead of just quitting, and will just automatically restart if the old output file does not exist anymore.<br />
+  Fixed a potentially major bug when the output files aren't written if the requested bitrate is below what x264 thinks is the minimum bitrate.</dd>
+  <dt>1.05-154 (20061212):</dt>
+  <dd>Added optional compression for controller-based encodes. Currently extremely slow, though, in order to check for validity.<br /> 
+  Added <code>--nocomp</code> switch to force compression off.<br />
+  Added <code>&lt;pipe&gt;</code> setting to agent's config.xml file to locally pipe data to x264 in agent-based encodings.<br />
+  Added tables in 2nd pass to show the performance of the various agents.<br />
+  Controller now searches its own directory for avs2yuv.<br />
+  Hid a bug involving the 1st pass splitter re-splitting ranges which are already allocated to agents not using controller-based encoding.</dd>
+  <dt>1.04-153 (20061124):</dt>
+  <dd>Made agent-based encoding. <br />
+  User-selectable number of agent cache buckets. <br />
+  Added many ratecontrol parameters to the controller, and pass them to x264. <br />
+  Lowered latency and memory usage due to sending data across the network. </dd>
+  <dt>1.03-152 (20061120):</dt>
+  <dd>Fixed an error when the number of frames per second was an integer.</dd>
+  <dt>1.02-151 (20061117):</dt>
+  <dd>MAJOR rewrite that honestly shouldn't have needed to happen. <br />
+  Made the agent per-computer instead of per-core.<br />
+  Fixed a bug with remote computers not getting enough data. <br />
+  Controller only connects once per session, instead of once per job. <br />
+  The code itself is much better-written. <br />
+  Config file syntax completely changed. </dd>
+  <dt>1.01-150 (20061109):</dt>
+  <dd>Made the <code>--rerc</code> option in order to change the re-ratecontrol frequency during the third pass.
+    <br />
+    Made the network more resilient to delayed-ACK problems.
+    <br />
+    Removed some of the more verbose printing (although everything is still in out-dump.txt).
+    <br />
+    Added simple FPS display (although it's buried in the debug info).
+    <br />
+  Fixed the batch length (now 5000, was 25000 but claimed to be 2500).</dd>
+  <dt>1.00-148 (20061104):</dt>
+  <dd>Initial release. Rampant bugs and programmer hacks predominate.</dd>
+</dl>
+</body>
+</html>
